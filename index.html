@@ -3,203 +3,418 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Cricket Bowling 3D Physics (Clean)</title>
+  <title>3D Cricket Bowling Physics Simulator</title>
   <style>
-    html, body { height:100%; margin:0; background:#070A12; overflow:hidden; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
-    #app{display:grid; grid-template-columns: 340px 1fr; height:100%;}
+    :root{
+      --bg:#070A12;
+      --panel:#0E1626;
+      --panel2:#0B1220;
+      --text:#EAF1FF;
+      --muted:#A6B4D0;
+      --accent:#4CC9F0;
+      --accent2:#7C3AED;
+      --danger:#FF4D6D;
+      --ok:#22C55E;
+      --stroke:rgba(255,255,255,.08);
+      --stroke2:rgba(255,255,255,.14);
+    }
+    html,body{ height:100%; margin:0; background: radial-gradient(1200px 700px at 20% 10%, rgba(124,58,237,.18), transparent 60%),
+                                     radial-gradient(1200px 700px at 70% 40%, rgba(76,201,240,.16), transparent 60%),
+                                     var(--bg);
+              color:var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; overflow:hidden;}
+    #app{display:grid; grid-template-columns: 360px 1fr; height:100%;}
     #panel{
-      color:#EAF1FF; padding:12px;
-      background: linear-gradient(180deg, rgba(14,22,38,.98), rgba(11,18,32,.98));
-      border-right:1px solid rgba(255,255,255,.1);
+      background: linear-gradient(180deg, rgba(14,22,38,.96), rgba(11,18,32,.96));
+      border-right: 1px solid var(--stroke);
+      padding:14px 14px 10px;
       overflow:auto;
     }
-    h1{font-size:16px; margin:0 0 10px;}
-    .muted{color:rgba(234,241,255,.65); font-size:12px; line-height:1.4;}
-    .group{margin-top:12px; padding:10px; border:1px solid rgba(255,255,255,.1); border-radius:14px; background: rgba(255,255,255,.03);}
-    label{display:flex; justify-content:space-between; gap:10px; font-size:12px; color:rgba(234,241,255,.7);}
-    .val{color:#EAF1FF; font-variant-numeric: tabular-nums;}
-    input[type="range"]{ width:100%; margin:8px 0 0;}
+    .title{
+      display:flex; align-items:flex-start; gap:10px; padding:8px 10px 12px;
+      border:1px solid var(--stroke); border-radius:14px; background: rgba(255,255,255,.03);
+      box-shadow: 0 12px 50px rgba(0,0,0,.25);
+    }
+    .badge{font-size:12px; padding:4px 8px; border-radius:999px; border:1px solid var(--stroke2); color:var(--muted);}
+    h1{font-size:16px; margin:0; line-height:1.2;}
+    .subtitle{margin:6px 0 0; color:var(--muted); font-size:12px; line-height:1.35;}
+    .group{ margin-top:12px; border:1px solid var(--stroke); border-radius:14px; overflow:hidden;}
+    .groupHeader{
+      padding:10px 10px; display:flex; align-items:center; justify-content:space-between;
+      background: rgba(255,255,255,.03);
+      border-bottom:1px solid var(--stroke);
+      position:sticky; top:0; backdrop-filter: blur(10px);
+      z-index:10;
+    }
+    .groupHeader b{font-size:13px;}
+    .groupBody{padding:10px;}
+    .row{display:grid; grid-template-columns: 1fr 90px; gap:10px; align-items:center; margin-bottom:10px;}
+    label{font-size:12px; color:var(--muted); display:flex; justify-content:space-between; gap:10px;}
+    .val{color:var(--text); font-variant-numeric: tabular-nums;}
+    input[type="range"]{ width:100%; }
+    input[type="number"], select{
+      width:100%; background: rgba(255,255,255,.04); border:1px solid var(--stroke2);
+      color:var(--text); border-radius:10px; padding:6px 8px; font-size:12px;
+      outline:none;
+    }
+    .btnRow{ display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;}
     button{
-      padding:9px 10px; border-radius:12px; cursor:pointer;
-      border:1px solid rgba(255,255,255,.16);
-      background: rgba(255,255,255,.06); color:#EAF1FF;
+      border:1px solid var(--stroke2);
+      background: rgba(255,255,255,.04);
+      color:var(--text);
+      padding:9px 10px;
+      border-radius:12px;
+      cursor:pointer;
       font-size:12px;
+      display:flex; align-items:center; gap:8px;
     }
-    button.primary{ border-color: rgba(76,201,240,.40); background: rgba(76,201,240,.16); }
-    .btns{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;}
-    #view{position:relative; height:100vh;}
-    canvas{ display:block; width:100%; height:100%; }
+    button.primary{ background: linear-gradient(90deg, rgba(76,201,240,.22), rgba(124,58,237,.16)); border-color: rgba(76,201,240,.35); }
+    button.danger{ border-color: rgba(255,77,109,.35); background: rgba(255,77,109,.08);}
+    button:active{ transform: translateY(1px); }
+
+    .chipRow{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;}
+    .chip{
+      font-size:11px; border:1px solid var(--stroke2); color:var(--muted);
+      padding:5px 8px; border-radius:999px; background: rgba(255,255,255,.03);
+    }
+
     #hud{
-      position:absolute; top:12px; left:12px; right:12px;
+      position:absolute; left:380px; right:0; top:0; padding:14px;
       pointer-events:none;
-      color:#EAF1FF;
     }
-    #hudCard{
-      display:inline-grid; grid-template-columns: 1fr 1fr 1fr;
+    #hud .card{
+      display:inline-grid; grid-template-columns:1fr 1fr 1fr;
       gap:10px;
-      padding:10px 12px;
-      border-radius:14px;
-      background: rgba(0,0,0,.30);
+      background: rgba(0,0,0,.28);
       border:1px solid rgba(255,255,255,.12);
-      backdrop-filter: blur(10px);
-      font-size:12px;
-      max-width:860px;
+      border-radius:16px;
+      padding:10px 12px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 18px 70px rgba(0,0,0,.25);
+      max-width: 860px;
     }
-    .mK{color:rgba(234,241,255,.62); font-size:11px;}
-    .mV{font-size:14px; font-variant-numeric: tabular-nums;}
+    .metric{padding:4px 6px;}
+    .metric .k{font-size:11px; color:var(--muted);}
+    .metric .v{font-size:14px; font-variant-numeric: tabular-nums;}
+    .hint{
+      margin-top:8px;
+      display:inline-block;
+      background: rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:999px;
+      padding:6px 10px;
+      color:var(--muted);
+      font-size:11px;
+    }
+
+    #canvasWrap{ position:relative; }
+    canvas{ display:block; width:100%; height:100%; }
+
+    .small{
+      font-size:11px; color:var(--muted); line-height:1.45;
+    }
+    .legend{
+      display:grid; grid-template-columns:1fr; gap:8px; margin-top:8px;
+      border:1px dashed rgba(255,255,255,.14); padding:10px; border-radius:14px;
+      background: rgba(0,0,0,.16);
+    }
+    .dot{ width:10px; height:10px; border-radius:999px; display:inline-block; margin-right:8px; }
+    .li{display:flex; align-items:center; font-size:11px; color:var(--muted); }
   </style>
 </head>
 <body>
 <div id="app">
   <aside id="panel">
-    <h1>Cricket Bowling 3D Physics Simulator (Clean)</h1>
-    <div class="muted">
-      Double-click to run. Move sliders to see real-time change in flight + bounce.
-      Mouse: drag rotate · scroll zoom · right click pan.
-    </div>
-
-    <div class="group">
-      <b style="font-size:13px;">Release</b>
-      <div style="margin-top:10px;">
-        <label>Speed <span class="val" id="vSpeed">130 km/h</span></label>
-        <input id="speed" type="range" min="90" max="160" step="1" value="130"/>
-      </div>
-      <div style="margin-top:10px;">
-        <label>Launch angle <span class="val" id="vAng">-4°</span></label>
-        <input id="ang" type="range" min="-12" max="6" step="0.5" value="-4"/>
-      </div>
-      <div style="margin-top:10px;">
-        <label>Side angle <span class="val" id="vSide">0°</span></label>
-        <input id="side" type="range" min="-6" max="6" step="0.5" value="0"/>
-      </div>
-      <div style="margin-top:10px;">
-        <label>Release height <span class="val" id="vH">2.10 m</span></label>
-        <input id="h" type="range" min="1.6" max="2.6" step="0.01" value="2.10"/>
+    <div class="title">
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div class="badge">Educational · Real-time 3D Physics</div>
+        <h1>Cricket Bowling Trajectory Simulator</h1>
+        <div class="subtitle">
+          Manipulate speed, angle, spin, swing, and pitch conditions to observe
+          <b>flight + bounce + post-bounce deviation</b>.
+        </div>
       </div>
     </div>
 
     <div class="group">
-      <b style="font-size:13px;">Spin + Swing</b>
-      <div style="margin-top:10px;">
-        <label>Spin rate <span class="val" id="vSpin">8 rps</span></label>
-        <input id="spin" type="range" min="0" max="20" step="0.1" value="8"/>
-      </div>
-      <div style="margin-top:10px;">
-        <label>Spin axis (-90..90) <span class="val" id="vAxis">25°</span></label>
-        <input id="axis" type="range" min="-90" max="90" step="1" value="25"/>
-      </div>
-      <div style="margin-top:10px;">
-        <label>Swing strength <span class="val" id="vSwing">0.30</span></label>
-        <input id="swing" type="range" min="0" max="1" step="0.01" value="0.30"/>
-      </div>
-      <div style="margin-top:10px;">
-        <label>Swing direction <span class="val" id="vSwingDir">In</span></label>
-        <input id="swingDir" type="range" min="-1" max="1" step="1" value="-1"/>
+      <div class="groupHeader"><b>Release Parameters</b><span class="badge">Bowler</span></div>
+      <div class="groupBody">
+        <div class="row">
+          <div>
+            <label>Speed <span class="val" id="vSpeed">36.0 m/s</span></label>
+            <input id="speed" type="range" min="20" max="45" step="0.1" value="36"/>
+          </div>
+          <div>
+            <label>km/h</label>
+            <input id="speedKmh" type="number" value="129.6" step="0.1"/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Release height <span class="val" id="vHeight">2.10 m</span></label>
+            <input id="height" type="range" min="1.6" max="2.6" step="0.01" value="2.10"/>
+          </div>
+          <div>
+            <label>m</label>
+            <input id="heightN" type="number" value="2.10" step="0.01"/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Launch angle (vertical) <span class="val" id="vAngle">-4.0°</span></label>
+            <input id="angle" type="range" min="-12" max="6" step="0.1" value="-4"/>
+          </div>
+          <div>
+            <label>°</label>
+            <input id="angleN" type="number" value="-4" step="0.1"/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Side angle (towards leg/off) <span class="val" id="vSideAngle">0.0°</span></label>
+            <input id="sideAngle" type="range" min="-6" max="6" step="0.1" value="0"/>
+          </div>
+          <div>
+            <label>°</label>
+            <input id="sideAngleN" type="number" value="0" step="0.1"/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Release point (from stumps) <span class="val" id="vReleaseX">0.35 m</span></label>
+            <input id="releaseX" type="range" min="-1.0" max="1.0" step="0.01" value="0.35"/>
+          </div>
+          <div>
+            <label>m</label>
+            <input id="releaseXN" type="number" value="0.35" step="0.01"/>
+          </div>
+        </div>
+
+        <div class="chipRow">
+          <span class="chip">Tip: Increase topspin to see dip + higher bounce</span>
+          <span class="chip">Tip: Increase backspin to float + skid</span>
+        </div>
       </div>
     </div>
 
     <div class="group">
-      <b style="font-size:13px;">Pitch</b>
-      <div style="margin-top:10px;">
-        <label>Hardness <span class="val" id="vHard">0.65</span></label>
-        <input id="hard" type="range" min="0.2" max="0.95" step="0.01" value="0.65"/>
-      </div>
-      <div style="margin-top:10px;">
-        <label>Friction <span class="val" id="vFric">0.35</span></label>
-        <input id="fric" type="range" min="0.05" max="0.85" step="0.01" value="0.35"/>
-      </div>
-      <div style="margin-top:10px;">
-        <label>Seam bite <span class="val" id="vSeam">0.30</span></label>
-        <input id="seam" type="range" min="0" max="1" step="0.01" value="0.30"/>
+      <div class="groupHeader"><b>Spin & Swing</b><span class="badge">Aero</span></div>
+      <div class="groupBody">
+        <div class="row">
+          <div>
+            <label>Spin rate <span class="val" id="vSpin">8 rps</span></label>
+            <input id="spin" type="range" min="0" max="20" step="0.1" value="8"/>
+          </div>
+          <div>
+            <label>rps</label>
+            <input id="spinN" type="number" value="8" step="0.1"/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Spin axis (0=topspin, 90=sidespin) <span class="val" id="vAxis">25°</span></label>
+            <input id="axis" type="range" min="-90" max="90" step="1" value="25"/>
+          </div>
+          <div>
+            <label>°</label>
+            <input id="axisN" type="number" value="25" step="1"/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Swing strength <span class="val" id="vSwing">0.30</span></label>
+            <input id="swing" type="range" min="0" max="1" step="0.01" value="0.30"/>
+          </div>
+          <div>
+            <label>0–1</label>
+            <input id="swingN" type="number" value="0.30" step="0.01"/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Swing direction <span class="val" id="vSwingDir">In (→ off stump)</span></label>
+            <input id="swingDir" type="range" min="-1" max="1" step="1" value="-1"/>
+          </div>
+          <div>
+            <label>mode</label>
+            <select id="swingMode">
+              <option value="new">New ball</option>
+              <option value="old">Old ball</option>
+              <option value="reverse">Reverse</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="small">
+          Swing is modeled as a simplified lateral acceleration influenced by speed and “swing strength”.
+          It’s not a CFD-grade seam model, but it’s excellent for learning intuition.
+        </div>
       </div>
     </div>
 
     <div class="group">
-      <b style="font-size:13px;">Controls</b>
-      <div class="btns">
-        <button class="primary" id="bowl">▶ Bowl</button>
-        <button id="pause">⏸ Pause</button>
-        <button id="reset">↺ Reset</button>
+      <div class="groupHeader"><b>Pitch & Bounce</b><span class="badge">Contact</span></div>
+      <div class="groupBody">
+
+        <div class="row">
+          <div>
+            <label>Pitch hardness <span class="val" id="vHard">0.65</span></label>
+            <input id="hard" type="range" min="0.2" max="0.95" step="0.01" value="0.65"/>
+          </div>
+          <div>
+            <label>0–1</label>
+            <input id="hardN" type="number" value="0.65" step="0.01"/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Surface friction <span class="val" id="vFric">0.35</span></label>
+            <input id="fric" type="range" min="0.05" max="0.85" step="0.01" value="0.35"/>
+          </div>
+          <div>
+            <label>0–1</label>
+            <input id="fricN" type="number" value="0.35" step="0.01"/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Seam bite (deviation after bounce) <span class="val" id="vSeam">0.30</span></label>
+            <input id="seam" type="range" min="0" max="1" step="0.01" value="0.30"/>
+          </div>
+          <div>
+            <label>0–1</label>
+            <input id="seamN" type="number" value="0.30" step="0.01"/>
+          </div>
+        </div>
+
+        <div class="small">
+          Bounce uses restitution (hardness) + tangential friction (skid/hold) + seam bite (extra sideways kick).
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="groupHeader"><b>Simulation Controls</b><span class="badge">Run</span></div>
+      <div class="groupBody">
+        <div class="btnRow">
+          <button class="primary" id="btnBowl">▶ Bowl</button>
+          <button id="btnPause">⏸ Pause</button>
+          <button id="btnReset">↺ Reset</button>
+          <button class="danger" id="btnClear">🧹 Clear trails</button>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <div>
+            <label>Time scale <span class="val" id="vTime">1.00×</span></label>
+            <input id="timeScale" type="range" min="0.25" max="2.5" step="0.01" value="1.0"/>
+          </div>
+          <div>
+            <label>×</label>
+            <input id="timeScaleN" type="number" value="1.0" step="0.01"/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Show vectors & markers <span class="val" id="vViz">On</span></label>
+            <input id="viz" type="range" min="0" max="1" step="1" value="1"/>
+          </div>
+          <div>
+            <label>Camera</label>
+            <select id="cameraMode">
+              <option value="broadcast">Broadcast</option>
+              <option value="follow">Follow ball</option>
+              <option value="side">Side view</option>
+              <option value="top">Top view</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="legend">
+          <div class="li"><span class="dot" style="background: var(--accent);"></span>Flight path (pre-bounce)</div>
+          <div class="li"><span class="dot" style="background: var(--accent2);"></span>Post-bounce path</div>
+          <div class="li"><span class="dot" style="background: rgba(255,255,255,.65);"></span>Key points: release, bounce, stumps plane</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="groupHeader"><b>Physics Notes</b><span class="badge">Learn</span></div>
+      <div class="groupBody small">
+        <b>Forces during flight</b><br/>
+        • Gravity: <code>Fg = m g</code><br/>
+        • Drag: <code>Fd = 0.5 ρ Cd A v²</code> (opposite velocity)<br/>
+        • Magnus: sideways/lift from spin: <code>Fm ∝ v × ω</code><br/>
+        • Swing (simplified): lateral acceleration depends on speed + swing strength<br/><br/>
+        <b>Bounce model</b><br/>
+        • Normal restitution (<i>hardness</i>): controls bounce height<br/>
+        • Tangential friction: controls skid/hold<br/>
+        • Seam bite: adds extra sideways deflection on impact
       </div>
     </div>
   </aside>
 
-  <main id="view">
+  <main id="canvasWrap">
     <div id="hud">
-      <div id="hudCard">
-        <div><div class="mK">Speed</div><div class="mV" id="mSpeed">—</div></div>
-        <div><div class="mK">Time</div><div class="mV" id="mTime">—</div></div>
-        <div><div class="mK">Status</div><div class="mV" id="mStatus">Ready</div></div>
+      <div class="card">
+        <div class="metric"><div class="k">Ball speed (now)</div><div class="v" id="mSpeed">—</div></div>
+        <div class="metric"><div class="k">Time since release</div><div class="v" id="mTime">—</div></div>
+        <div class="metric"><div class="k">Height</div><div class="v" id="mHeight">—</div></div>
+
+        <div class="metric"><div class="k">Swing (lateral)</div><div class="v" id="mSwing">—</div></div>
+        <div class="metric"><div class="k">Magnus (dip/drift)</div><div class="v" id="mMagnus">—</div></div>
+        <div class="metric"><div class="k">Status</div><div class="v" id="mStatus">Ready</div></div>
       </div>
+      <div class="hint">Mouse: drag to orbit · Scroll: zoom · Right-click: pan</div>
     </div>
     <canvas id="c"></canvas>
   </main>
 </div>
 
-<!-- ✅ Non-module builds (works in file://) -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+<script type="module">
+  import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+  import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js";
 
-<script>
-(() => {
-  // ---- Helpers ----
-  const el = id => document.getElementById(id);
-  const clamp = (x,a,b)=>Math.max(a,Math.min(b,x));
-  const deg = d => d*Math.PI/180;
-
-  // ---- UI ----
-  const ui = {
-    speed: el("speed"), ang: el("ang"), side: el("side"), h: el("h"),
-    spin: el("spin"), axis: el("axis"), swing: el("swing"), swingDir: el("swingDir"),
-    hard: el("hard"), fric: el("fric"), seam: el("seam"),
-    bowl: el("bowl"), pause: el("pause"), reset: el("reset"),
-  };
-
-  const labels = {
-    vSpeed: el("vSpeed"), vAng: el("vAng"), vSide: el("vSide"), vH: el("vH"),
-    vSpin: el("vSpin"), vAxis: el("vAxis"), vSwing: el("vSwing"), vSwingDir: el("vSwingDir"),
-    vHard: el("vHard"), vFric: el("vFric"), vSeam: el("vSeam"),
-    mSpeed: el("mSpeed"), mTime: el("mTime"), mStatus: el("mStatus"),
-  };
-
-  function updateLabels(){
-    labels.vSpeed.textContent = `${ui.speed.value} km/h`;
-    labels.vAng.textContent = `${ui.ang.value}°`;
-    labels.vSide.textContent = `${ui.side.value}°`;
-    labels.vH.textContent = `${parseFloat(ui.h.value).toFixed(2)} m`;
-    labels.vSpin.textContent = `${parseFloat(ui.spin.value).toFixed(1)} rps`;
-    labels.vAxis.textContent = `${ui.axis.value}°`;
-    labels.vSwing.textContent = `${parseFloat(ui.swing.value).toFixed(2)}`;
-    labels.vSwingDir.textContent = parseInt(ui.swingDir.value,10) === -1 ? "In" : (parseInt(ui.swingDir.value,10)===1 ? "Away" : "None");
-    labels.vHard.textContent = `${parseFloat(ui.hard.value).toFixed(2)}`;
-    labels.vFric.textContent = `${parseFloat(ui.fric.value).toFixed(2)}`;
-    labels.vSeam.textContent = `${parseFloat(ui.seam.value).toFixed(2)}`;
-  }
-  ["input","change"].forEach(evt=>{
-    Object.values(ui).forEach(x=>{
-      if(x && x.tagName === "INPUT") x.addEventListener(evt, updateLabels);
-    });
-  });
-  updateLabels();
-
-  // ---- Physics constants ----
+  // -----------------------------
+  // Constants (units: SI)
+  // -----------------------------
   const g = 9.81;
-  const rho = 1.225;
-  const ballRadius = 0.036;
+  const rho = 1.225;               // air density kg/m^3
+  const ballRadius = 0.036;        // ~72mm diameter / 2
   const ballArea = Math.PI * ballRadius * ballRadius;
-  const ballMass = 0.156;
-  const Cd = 0.5;
-  const magnusK = 0.00065;
-  const swingK = 0.020;
+  const ballMass = 0.156;          // ~156g
+  const pitchLength = 20.12;       // wicket to wicket
+  const creaseToCrease = 17.68;    // approx
+  const releaseToStumps = 18.0;    // adjust for visualization
+  const stumpsZ = 0;               // "batter" at z=0
+  const releaseZ = -releaseToStumps;
+  const pitchY = 0;
 
-  // Pitch / geometry
-  const stumpsZ = 0;
-  const releaseZ = -18.0;
+  // Aerodynamic coefficients
+  const Cd = 0.5;                  // drag coefficient (approx cricket ball in turbulent regime)
+  const magnusK = 0.00065;         // tuned constant for educational clarity
 
-  // ---- Three.js setup ----
-  const canvas = el("c");
+  // Swing tuning
+  const swingK = 0.018;            // base lateral acceleration scaling
+
+  // Integration
+  const dtBase = 1/240;            // simulation timestep
+
+  // -----------------------------
+  // Scene setup
+  // -----------------------------
+  const canvas = document.getElementById("c");
   const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
 
   const scene = new THREE.Scene();
   scene.fog = new THREE.Fog(0x070A12, 15, 80);
@@ -207,48 +422,84 @@
   const camera = new THREE.PerspectiveCamera(52, 2, 0.1, 220);
   camera.position.set(8, 6.2, 14);
 
-  const controls = new THREE.OrbitControls(camera, canvas);
+  const controls = new OrbitControls(camera, canvas);
   controls.target.set(0, 1.2, -6);
   controls.enableDamping = true;
   controls.dampingFactor = 0.06;
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.26));
+  // Lights
+  scene.add(new THREE.AmbientLight(0xffffff, 0.25));
   const key = new THREE.DirectionalLight(0xffffff, 1.0);
   key.position.set(6, 10, 4);
   scene.add(key);
 
-  // Pitch
-  const pitch = new THREE.Mesh(
-    new THREE.PlaneGeometry(12, 42),
-    new THREE.MeshStandardMaterial({color:0x0B1220, roughness:0.85, metalness:0.0})
-  );
+  const rim = new THREE.DirectionalLight(0x7C3AED, 0.25);
+  rim.position.set(-10, 8, -12);
+  scene.add(rim);
+
+  // Ground / pitch
+  const pitchGeo = new THREE.PlaneGeometry(12, 42, 1, 1);
+  const pitchMat = new THREE.MeshStandardMaterial({color:0x0B1220, roughness:0.85, metalness:0.0});
+  const pitch = new THREE.Mesh(pitchGeo, pitchMat);
   pitch.rotation.x = -Math.PI/2;
   pitch.position.set(0, 0, -9);
   scene.add(pitch);
 
+  // Pitch markings
+  const lineMat = new THREE.LineBasicMaterial({color:0x86A3FF, transparent:true, opacity:0.35});
+  function addLine(points){
+    const g = new THREE.BufferGeometry().setFromPoints(points);
+    const l = new THREE.Line(g, lineMat);
+    scene.add(l);
+    return l;
+  }
+
+  // Center line along pitch
+  addLine([
+    new THREE.Vector3(0, 0.001, -30),
+    new THREE.Vector3(0, 0.001, 6),
+  ]);
+
+  // Stumps plane marker
+  const stumpsPlaneGeo = new THREE.PlaneGeometry(10, 3);
+  const stumpsPlaneMat = new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.04, side:THREE.DoubleSide});
+  const stumpsPlane = new THREE.Mesh(stumpsPlaneGeo, stumpsPlaneMat);
+  stumpsPlane.position.set(0, 1.1, stumpsZ);
+  scene.add(stumpsPlane);
+
   // Stumps
-  const stumpMat = new THREE.MeshStandardMaterial({color:0xEAF1FF, roughness:0.6});
-  const stumpGeo = new THREE.CylinderGeometry(0.02,0.02,0.71,16);
-  [-0.11,0,0.11].forEach(x=>{
+  const stumpMat = new THREE.MeshStandardMaterial({color:0xEAF1FF, roughness:0.6, metalness:0.1});
+  const stumpGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.71, 16);
+  const stumpX = [-0.11, 0, 0.11];
+  stumpX.forEach(x=>{
     const s = new THREE.Mesh(stumpGeo, stumpMat);
-    s.position.set(x, 0.355, stumpsZ+0.02);
+    s.position.set(x, 0.355, stumpsZ + 0.02);
     scene.add(s);
   });
 
-  // Ball (bigger + bright to ensure visibility)
-  const ball = new THREE.Mesh(
-    new THREE.SphereGeometry(ballRadius, 32, 32),
-    new THREE.MeshStandardMaterial({color:0xF2EDE6, roughness:0.45, metalness:0.05})
-  );
+  // Ball
+  const ballGeo = new THREE.SphereGeometry(ballRadius, 32, 32);
+  const ballMat = new THREE.MeshStandardMaterial({color:0xE7E0D8, roughness:0.55, metalness:0.05});
+  const ball = new THREE.Mesh(ballGeo, ballMat);
   scene.add(ball);
+
+  // Vector arrows (velocity + forces)
+  const arrowVel = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 1, 0x4CC9F0);
+  const arrowAero = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 1, 0x7C3AED);
+  const arrowGrav = new THREE.ArrowHelper(new THREE.Vector3(0,-1,0), new THREE.Vector3(0,0,0), 1, 0xFFFFFF);
+  arrowVel.line.material.transparent = true; arrowVel.line.material.opacity = 0.8;
+  arrowAero.line.material.transparent = true; arrowAero.line.material.opacity = 0.8;
+  arrowGrav.line.material.transparent = true; arrowGrav.line.material.opacity = 0.25;
+  scene.add(arrowVel, arrowAero, arrowGrav);
 
   // Trails
   function makeTrail(color){
     const mat = new THREE.LineBasicMaterial({color, transparent:true, opacity:0.95});
     const geom = new THREE.BufferGeometry();
-    const maxPts = 2000;
-    geom.setAttribute("position", new THREE.BufferAttribute(new Float32Array(maxPts*3), 3));
-    geom.setDrawRange(0,0);
+    const maxPts = 2400;
+    const arr = new Float32Array(maxPts*3);
+    geom.setAttribute("position", new THREE.BufferAttribute(arr, 3));
+    geom.setDrawRange(0, 0);
     const line = new THREE.Line(geom, mat);
     line.userData = {maxPts, count:0};
     scene.add(line);
@@ -257,202 +508,515 @@
   const trailPre = makeTrail(0x4CC9F0);
   const trailPost = makeTrail(0x7C3AED);
 
-  function trailClear(t){
-    t.userData.count = 0;
-    t.geometry.setDrawRange(0,0);
-    t.geometry.attributes.position.needsUpdate = true;
-  }
-  function trailPush(t, p){
-    const {maxPts} = t.userData;
-    let c = t.userData.count;
-    if(c>=maxPts) return;
-    const arr = t.geometry.attributes.position.array;
-    arr[c*3+0]=p.x; arr[c*3+1]=p.y; arr[c*3+2]=p.z;
-    t.userData.count = c+1;
-    t.geometry.setDrawRange(0, t.userData.count);
-    t.geometry.attributes.position.needsUpdate = true;
+  function trailPush(trail, p){
+    const pos = trail.geometry.attributes.position.array;
+    const {maxPts} = trail.userData;
+    let c = trail.userData.count;
+    if(c >= maxPts) return;
+    pos[c*3+0] = p.x;
+    pos[c*3+1] = p.y;
+    pos[c*3+2] = p.z;
+    trail.userData.count = c + 1;
+    trail.geometry.setDrawRange(0, trail.userData.count);
+    trail.geometry.attributes.position.needsUpdate = true;
   }
 
-  // ---- Simulation state ----
+  function trailClear(){
+    [trailPre, trailPost].forEach(t=>{
+      t.userData.count = 0;
+      t.geometry.setDrawRange(0, 0);
+      t.geometry.attributes.position.needsUpdate = true;
+    });
+  }
+
+  // Markers: release & bounce
+  const markerGeo = new THREE.SphereGeometry(0.045, 16, 16);
+  const markerMat = new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.65});
+  const markerRelease = new THREE.Mesh(markerGeo, markerMat);
+  const markerBounce = new THREE.Mesh(markerGeo, markerMat);
+  scene.add(markerRelease, markerBounce);
+  markerBounce.visible = false;
+
+  // -----------------------------
+  // UI bindings
+  // -----------------------------
+  const ui = {
+    speed: el("speed"), speedKmh: el("speedKmh"),
+    height: el("height"), heightN: el("heightN"),
+    angle: el("angle"), angleN: el("angleN"),
+    sideAngle: el("sideAngle"), sideAngleN: el("sideAngleN"),
+    releaseX: el("releaseX"), releaseXN: el("releaseXN"),
+
+    spin: el("spin"), spinN: el("spinN"),
+    axis: el("axis"), axisN: el("axisN"),
+    swing: el("swing"), swingN: el("swingN"),
+    swingDir: el("swingDir"), swingMode: el("swingMode"),
+
+    hard: el("hard"), hardN: el("hardN"),
+    fric: el("fric"), fricN: el("fricN"),
+    seam: el("seam"), seamN: el("seamN"),
+
+    timeScale: el("timeScale"), timeScaleN: el("timeScaleN"),
+    viz: el("viz"),
+    cameraMode: el("cameraMode"),
+
+    bowl: el("btnBowl"), pause: el("btnPause"), reset: el("btnReset"), clear: el("btnClear"),
+  };
+
+  const label = {
+    vSpeed: el("vSpeed"), vHeight: el("vHeight"), vAngle: el("vAngle"), vSideAngle: el("vSideAngle"), vReleaseX: el("vReleaseX"),
+    vSpin: el("vSpin"), vAxis: el("vAxis"), vSwing: el("vSwing"), vSwingDir: el("vSwingDir"),
+    vHard: el("vHard"), vFric: el("vFric"), vSeam: el("vSeam"),
+    vTime: el("vTime"), vViz: el("vViz"),
+
+    mSpeed: el("mSpeed"), mTime: el("mTime"), mHeight: el("mHeight"),
+    mSwing: el("mSwing"), mMagnus: el("mMagnus"), mStatus: el("mStatus"),
+  };
+
+  function el(id){ return document.getElementById(id); }
+  function clamp(x,a,b){ return Math.max(a, Math.min(b, x)); }
+  function degToRad(d){ return d*Math.PI/180; }
+
+  // Sync slider<->number inputs
+  function bindRangeNumber(range, num, onChange){
+    const syncFromRange = ()=>{
+      num.value = range.id === "speed" ? (parseFloat(range.value)*3.6).toFixed(1) : range.value;
+      onChange?.();
+    };
+    const syncFromNum = ()=>{
+      if(range.id === "speed"){
+        const ms = clamp(parseFloat(num.value)/3.6, parseFloat(range.min), parseFloat(range.max));
+        range.value = ms.toFixed(1);
+      }else{
+        const v = clamp(parseFloat(num.value), parseFloat(range.min), parseFloat(range.max));
+        range.value = v;
+      }
+      onChange?.();
+    };
+
+    range.addEventListener("input", syncFromRange);
+    num.addEventListener("change", syncFromNum);
+    syncFromRange();
+  }
+
+  bindRangeNumber(ui.speed, ui.speedKmh, updateLabels);
+  bindRangeNumber(ui.height, ui.heightN, updateLabels);
+  bindRangeNumber(ui.angle, ui.angleN, updateLabels);
+  bindRangeNumber(ui.sideAngle, ui.sideAngleN, updateLabels);
+  bindRangeNumber(ui.releaseX, ui.releaseXN, updateLabels);
+
+  bindRangeNumber(ui.spin, ui.spinN, updateLabels);
+  bindRangeNumber(ui.axis, ui.axisN, updateLabels);
+  bindRangeNumber(ui.swing, ui.swingN, updateLabels);
+
+  bindRangeNumber(ui.hard, ui.hardN, updateLabels);
+  bindRangeNumber(ui.fric, ui.fricN, updateLabels);
+  bindRangeNumber(ui.seam, ui.seamN, updateLabels);
+
+  bindRangeNumber(ui.timeScale, ui.timeScaleN, updateLabels);
+
+  ui.swingDir.addEventListener("input", updateLabels);
+  ui.swingMode.addEventListener("change", updateLabels);
+  ui.viz.addEventListener("input", updateLabels);
+  ui.cameraMode.addEventListener("change", updateLabels);
+
+  function updateLabels(){
+    label.vSpeed.textContent = `${parseFloat(ui.speed.value).toFixed(1)} m/s`;
+    label.vHeight.textContent = `${parseFloat(ui.height.value).toFixed(2)} m`;
+    label.vAngle.textContent = `${parseFloat(ui.angle.value).toFixed(1)}°`;
+    label.vSideAngle.textContent = `${parseFloat(ui.sideAngle.value).toFixed(1)}°`;
+    label.vReleaseX.textContent = `${parseFloat(ui.releaseX.value).toFixed(2)} m`;
+
+    label.vSpin.textContent = `${parseFloat(ui.spin.value).toFixed(1)} rps`;
+    label.vAxis.textContent = `${parseFloat(ui.axis.value).toFixed(0)}°`;
+    label.vSwing.textContent = `${parseFloat(ui.swing.value).toFixed(2)}`;
+
+    const d = parseInt(ui.swingDir.value,10);
+    let dirText = "None";
+    if(d === -1) dirText = "In (→ off stump)";
+    if(d === 1) dirText = "Away (→ 4th stump)";
+    label.vSwingDir.textContent = dirText;
+
+    label.vHard.textContent = `${parseFloat(ui.hard.value).toFixed(2)}`;
+    label.vFric.textContent = `${parseFloat(ui.fric.value).toFixed(2)}`;
+    label.vSeam.textContent = `${parseFloat(ui.seam.value).toFixed(2)}`;
+
+    label.vTime.textContent = `${parseFloat(ui.timeScale.value).toFixed(2)}×`;
+    label.vViz.textContent = parseInt(ui.viz.value,10) ? "On" : "Off";
+  }
+
+  // -----------------------------
+  // Simulation state
+  // -----------------------------
   let running = false;
   let paused = false;
-  let bounced = false;
   let t = 0;
 
-  const pos = new THREE.Vector3();
-  const vel = new THREE.Vector3();
-  const omega = new THREE.Vector3();
-  const aDrag = new THREE.Vector3();
-  const aMagnus = new THREE.Vector3();
-  const aSwing = new THREE.Vector3();
+  let bounced = false;
+  let bouncePoint = new THREE.Vector3();
+
+  // Position / velocity vectors
+  let pos = new THREE.Vector3();
+  let vel = new THREE.Vector3();
+
+  // Forces to show
+  let aDrag = new THREE.Vector3();
+  let aMagnus = new THREE.Vector3();
+  let aSwing = new THREE.Vector3();
+
+  // Ball spin (angular velocity vector rad/s)
+  let omega = new THREE.Vector3(); // direction = axis
 
   function resetBall(){
     t = 0;
     bounced = false;
+    markerBounce.visible = false;
 
-    const speedMS = parseFloat(ui.speed.value) / 3.6;
-    const releaseH = parseFloat(ui.h.value);
-    const angV = deg(parseFloat(ui.ang.value));
-    const angS = deg(parseFloat(ui.side.value));
+    const releaseHeight = parseFloat(ui.height.value);
+    const releaseX = parseFloat(ui.releaseX.value);
 
-    pos.set(0.35, releaseH, releaseZ);
+    pos.set(releaseX, releaseHeight, releaseZ);
+
+    const speed = parseFloat(ui.speed.value);
+    const angV = degToRad(parseFloat(ui.angle.value));
+    const angSide = degToRad(parseFloat(ui.sideAngle.value));
+
+    // Coordinate system:
+    // z increases towards batter (stumps at z=0), y up, x sideways (positive = leg side)
+    const forward = new THREE.Vector3(0, 0, 1);
+
+    // build initial direction from pitch-forward with side & vertical angles
     const dir = new THREE.Vector3(
-      Math.sin(angS),
+      Math.sin(angSide),
       Math.sin(angV),
-      Math.cos(angS) * Math.cos(angV)
+      Math.cos(angSide) * Math.cos(angV)
     ).normalize();
 
-    vel.copy(dir).multiplyScalar(speedMS);
+    vel.copy(dir).multiplyScalar(speed);
 
-    const rps = parseFloat(ui.spin.value);
+    // Spin axis:
+    // axis angle: 0° = topspin (rotation causing downward magnus), 90° = pure sidespin (drift)
     const axisDeg = parseFloat(ui.axis.value);
+    const rps = parseFloat(ui.spin.value);
     const w = rps * 2*Math.PI;
-    const a = deg(axisDeg);
 
-    omega.set(Math.cos(a)*w, Math.sin(a)*w, 0);
+    // Define omega in ball frame:
+    // topspin: omega around x-axis (right-hand rule)
+    // sidespin: omega around y-axis influences drift in x
+    // We'll mix by axisDeg
+    const a = degToRad(axisDeg);
+    omega.set(
+      Math.cos(a) * w,   // x component (top/back spin)
+      Math.sin(a) * w,   // y component (side spin)
+      0
+    );
 
+    // Place marker
+    markerRelease.position.copy(pos);
+
+    // Place ball
     ball.position.copy(pos);
 
-    trailClear(trailPre);
-    trailClear(trailPost);
+    // Trails
+    trailClear();
     trailPush(trailPre, pos);
 
-    labels.mStatus.textContent = "Ready";
-    labels.mTime.textContent = "0.00 s";
-    labels.mSpeed.textContent = `${ui.speed.value} km/h`;
+    // arrows hidden until run
+    updateViz();
   }
 
-  function computeAero(){
-    const speed = vel.length();
-    if(speed < 1e-6){
-      aDrag.set(0,0,0); aMagnus.set(0,0,0); aSwing.set(0,0,0);
-      return;
-    }
-    const vHat = vel.clone().multiplyScalar(1/speed);
+  resetBall();
 
-    const dragMag = (0.5 * rho * Cd * ballArea * speed*speed) / ballMass;
-    aDrag.copy(vHat).multiplyScalar(-dragMag);
-
-    aMagnus.copy(vel).cross(omega).multiplyScalar(magnusK);
-
-    const swingStrength = parseFloat(ui.swing.value);
-    const swingDir = parseInt(ui.swingDir.value,10);
-    const speedFactor = clamp((speed - 18/3.6) / (45/3.6 - 18/3.6), 0, 1);
-    const aLat = swingK * swingStrength * speedFactor*speedFactor;
-    aSwing.set(swingDir * aLat, 0, 0);
-  }
-
-  function bounce(){
-    const hard = parseFloat(ui.hard.value);
-    const fric = parseFloat(ui.fric.value);
-    const seam = parseFloat(ui.seam.value);
-
-    const e = 0.08 + 0.58 * hard;
-
-    const vt = new THREE.Vector3(vel.x, 0, vel.z);
-    const skid = clamp(1 - fric*0.55, 0.15, 0.98);
-    vt.multiplyScalar(skid);
-
-    // seam kick
-    const dir = parseInt(ui.swingDir.value,10) || (omega.y>=0 ? 1 : -1);
-    vt.x += dir * seam * 0.9;
-
-    vel.set(vt.x, Math.abs(vel.y) * e, vt.z);
-
-    bounced = true;
-    labels.mStatus.textContent = "Bounced";
+  function updateViz(){
+    const on = parseInt(ui.viz.value,10) === 1;
+    arrowVel.visible = on;
+    arrowAero.visible = on;
+    arrowGrav.visible = on;
+    markerRelease.visible = on;
+    // bounce marker shown only after bounce
   }
 
   // Buttons
   ui.bowl.addEventListener("click", ()=>{
+    if(!running){
+      resetBall();
+      running = true;
+      paused = false;
+      label.mStatus.textContent = "Bowling…";
+      return;
+    }
+    // if already running, "re-bowl"
     resetBall();
     running = true;
     paused = false;
-    ui.pause.textContent = "⏸ Pause";
-    labels.mStatus.textContent = "Bowling…";
+    label.mStatus.textContent = "Bowling…";
   });
+
   ui.pause.addEventListener("click", ()=>{
     if(!running) return;
     paused = !paused;
     ui.pause.textContent = paused ? "▶ Resume" : "⏸ Pause";
-    labels.mStatus.textContent = paused ? "Paused" : (bounced ? "Bounced" : "Bowling…");
+    label.mStatus.textContent = paused ? "Paused" : "Bowling…";
   });
+
   ui.reset.addEventListener("click", ()=>{
     running = false;
     paused = false;
     ui.pause.textContent = "⏸ Pause";
     resetBall();
+    label.mStatus.textContent = "Ready";
   });
 
-  // ---- Render loop ----
-  function resize(){
+  ui.clear.addEventListener("click", ()=>{
+    trailClear();
+  });
+
+  // Keep view responsive
+  function resizeRendererToDisplaySize(){
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
-    renderer.setSize(w, h, false);
-    camera.aspect = w/h;
-    camera.updateProjectionMatrix();
+    const needResize = canvas.width !== Math.floor(w*renderer.getPixelRatio()) || canvas.height !== Math.floor(h*renderer.getPixelRatio());
+    if(needResize){
+      renderer.setSize(w, h, false);
+      camera.aspect = w/h;
+      camera.updateProjectionMatrix();
+    }
   }
-  window.addEventListener("resize", resize);
-  resize();
 
-  const dtBase = 1/240;
+  // -----------------------------
+  // Physics: forces & bounce
+  // -----------------------------
+  function computeAerodynamics(v){
+    // Drag: a = F/m = -(0.5*rho*Cd*A*v^2)/m * v_hat
+    const speed = v.length();
+    if(speed < 1e-6){
+      aDrag.set(0,0,0);
+      aMagnus.set(0,0,0);
+      aSwing.set(0,0,0);
+      return;
+    }
 
-  function step(){
+    const vHat = v.clone().multiplyScalar(1/speed);
+
+    const dragMag = (0.5 * rho * Cd * ballArea * speed*speed) / ballMass;
+    aDrag.copy(vHat).multiplyScalar(-dragMag);
+
+    // Magnus effect: a ∝ v × ω (lift perpendicular to both)
+    // tuned constant magnusK for educational clarity
+    aMagnus.copy(v).cross(omega).multiplyScalar(magnusK);
+
+    // Swing effect (simplified):
+    // lateral accel, scales with speed, and user swing strength, and ball condition mode
+    const swingStrength = parseFloat(ui.swing.value);
+    const swingDir = parseInt(ui.swingDir.value,10); // -1 in, +1 away
+
+    let modeScale = 1.0;
+    const mode = ui.swingMode.value;
+    if(mode === "new") modeScale = 1.0;
+    if(mode === "old") modeScale = 0.75;
+    if(mode === "reverse") modeScale = 1.15;
+
+    // swing diminishes at very low speed; peaks in mid-high
+    const speedFactor = clamp((speed - 18) / (45 - 18), 0, 1); // 0..1
+    const aLat = swingK * swingStrength * modeScale * speedFactor * speedFactor;
+
+    // choose lateral direction in X
+    aSwing.set(swingDir * aLat, 0, 0);
+  }
+
+  function applyBounce(){
+    // Pitch parameters
+    const hard = parseFloat(ui.hard.value); // 0..1
+    const fric = parseFloat(ui.fric.value); // 0..1
+    const seam = parseFloat(ui.seam.value); // 0..1
+
+    // Normal restitution: controls bounce height
+    // mapping: hard 0.2..0.95 -> e ~ 0.18..0.62
+    const e = 0.08 + 0.58 * hard;
+
+    // Decompose velocity into normal (y) and tangential (x,z)
+    const vn = vel.y;
+    const vt = new THREE.Vector3(vel.x, 0, vel.z);
+
+    // reverse normal component
+    let newVn = -vn * e;
+
+    // friction reduces tangential speed (skid vs hold)
+    const vtMag = vt.length();
+    if(vtMag > 1e-6){
+      const skid = clamp(1 - fric*0.55, 0.15, 0.98);
+      vt.multiplyScalar(skid);
+    }
+
+    // Seam bite: sideways deflection at bounce
+    // direction depends on spin axis + swing dir for intuitive view
+    const swingDir = parseInt(ui.swingDir.value,10);
+    const seamKick = seam * 0.9; // max lateral kick m/s
+    const kickSign = (swingDir === 0) ? (omega.y >= 0 ? 1 : -1) : swingDir;
+    vt.x += kickSign * seamKick;
+
+    // Spin-to-velocity coupling: side spin can change lateral after bounce
+    // (very simplified; gives learners correct intuition)
+    const spinInfluence = clamp(omega.y / (2*Math.PI*20), -1, 1) * 0.65; // -0.65..0.65
+    vt.x += spinInfluence;
+
+    // topspin tends to reduce forward speed slightly; backspin increases skid slightly
+    const topBack = clamp(omega.x / (2*Math.PI*20), -1, 1);
+    vt.z *= (1 - 0.06*topBack);
+
+    vel.set(vt.x, newVn, vt.z);
+
+    // Mark bounce
+    bounced = true;
+    bouncePoint.copy(pos);
+    markerBounce.visible = true;
+    markerBounce.position.copy(bouncePoint);
+
+    // add point to post trail immediately
+    trailPush(trailPost, pos);
+  }
+
+  // -----------------------------
+  // Camera modes
+  // -----------------------------
+  function updateCamera(){
+    const mode = ui.cameraMode.value;
+
+    if(mode === "broadcast"){
+      // nothing special, orbit controls
+      return;
+    }
+
+    // We do a gentle camera reposition; controls still active
+    const p = ball.position;
+
+    if(mode === "follow"){
+      const camTarget = p.clone();
+      const camPos = p.clone().add(new THREE.Vector3(3.2, 2.4, -6.5));
+      camera.position.lerp(camPos, 0.05);
+      controls.target.lerp(camTarget, 0.06);
+    }
+
+    if(mode === "side"){
+      const camTarget = new THREE.Vector3(0, 1.2, -6);
+      const camPos = new THREE.Vector3(10.5, 3.4, -6.5);
+      camera.position.lerp(camPos, 0.04);
+      controls.target.lerp(camTarget, 0.05);
+    }
+
+    if(mode === "top"){
+      const camTarget = new THREE.Vector3(0, 0.0, -7);
+      const camPos = new THREE.Vector3(0, 18, -7);
+      camera.position.lerp(camPos, 0.04);
+      controls.target.lerp(camTarget, 0.05);
+    }
+  }
+
+  // -----------------------------
+  // Main loop
+  // -----------------------------
+  function stepSimulation(){
+    const timeScale = parseFloat(ui.timeScale.value);
+    const dt = dtBase * timeScale;
+
+    // Only update if running
     if(!running || paused) return;
 
-    const dt = dtBase;
+    computeAerodynamics(vel);
 
-    computeAero();
-    const acc = new THREE.Vector3(0, -g, 0).add(aDrag).add(aMagnus).add(aSwing);
+    // total acceleration
+    const acc = new THREE.Vector3(0, -g, 0)
+      .add(aDrag)
+      .add(aMagnus)
+      .add(aSwing);
 
+    // Semi-implicit Euler: v += a dt, x += v dt
     vel.addScaledVector(acc, dt);
     pos.addScaledVector(vel, dt);
 
-    // bounce detection
-    if(!bounced && pos.y <= ballRadius*0.98){
-      pos.y = ballRadius*0.98;
-      bounce();
-      trailPush(trailPost, pos);
+    // Collision with pitch (y <= 0)
+    if(!bounced && pos.y <= pitchY + ballRadius*0.98){
+      pos.y = pitchY + ballRadius*0.98;
+      applyBounce();
+      label.mStatus.textContent = "Bounced";
     }
 
-    // stop after reaching batter plane
-    if(pos.z > stumpsZ + 0.8){
+    // Stop after passing stumps plane a bit
+    if(pos.z >= stumpsZ + 0.6){
       running = false;
-      labels.mStatus.textContent = "Completed";
+      label.mStatus.textContent = "Completed";
     }
 
-    t += dt;
+    // Update ball mesh
     ball.position.copy(pos);
 
+    // Trails
     if(!bounced) trailPush(trailPre, pos);
     else trailPush(trailPost, pos);
 
-    labels.mTime.textContent = `${t.toFixed(2)} s`;
-    labels.mSpeed.textContent = `${(vel.length()*3.6).toFixed(0)} km/h`;
+    // HUD
+    t += dt;
+    label.mTime.textContent = `${t.toFixed(2)} s`;
+    label.mHeight.textContent = `${pos.y.toFixed(2)} m`;
+    label.mSpeed.textContent = `${vel.length().toFixed(1)} m/s (${(vel.length()*3.6).toFixed(0)} km/h)`;
 
-    // visual spin
+    // Compute scalar magnus/swing metrics for display
+    label.mSwing.textContent = `${aSwing.x >= 0 ? "+" : ""}${aSwing.x.toFixed(3)} m/s²`;
+    const mag = aMagnus.length();
+    label.mMagnus.textContent = `${mag.toFixed(3)} m/s²`;
+
+    // Vector arrows
+    const vizOn = parseInt(ui.viz.value,10) === 1;
+    if(vizOn){
+      const vLen = clamp(vel.length()*0.05, 0.3, 2.4);
+      arrowVel.position.copy(pos);
+      arrowVel.setDirection(vel.clone().normalize());
+      arrowVel.setLength(vLen, 0.18, 0.1);
+
+      // aero arrow = drag + magnus + swing
+      const aero = aDrag.clone().add(aMagnus).add(aSwing);
+      const aLen = clamp(aero.length()*0.8, 0.2, 2.4);
+      arrowAero.position.copy(pos);
+      arrowAero.setDirection(aero.length() > 1e-6 ? aero.clone().normalize() : new THREE.Vector3(0,1,0));
+      arrowAero.setLength(aLen, 0.18, 0.1);
+
+      arrowGrav.position.copy(pos);
+      arrowGrav.setDirection(new THREE.Vector3(0,-1,0));
+      arrowGrav.setLength(1.2, 0.18, 0.1);
+    }
+
+    // Update seam animation (ball rotates for visual)
+    // We'll rotate about omega direction
     const wmag = omega.length();
     if(wmag > 0.01){
       const axis = omega.clone().normalize();
-      ball.rotateOnAxis(axis, wmag * dt * 0.06);
+      ball.rotateOnAxis(axis, wmag * dt * 0.08);
     }
   }
 
-  function animate(){
-    requestAnimationFrame(animate);
-    updateLabels();
-    step();
+  function render(){
+    resizeRendererToDisplaySize();
+    updateViz();
+    updateCamera();
+
+    stepSimulation();
     controls.update();
     renderer.render(scene, camera);
-  }
 
-  // Initial
+    requestAnimationFrame(render);
+  }
+  requestAnimationFrame(render);
+
+  // Init HUD metrics
+  label.mSpeed.textContent = "—";
+  label.mTime.textContent = "—";
+  label.mHeight.textContent = "—";
+  label.mSwing.textContent = "—";
+  label.mMagnus.textContent = "—";
+
+  // initial placement
   resetBall();
-  // Auto-start so user sees animation immediately
-  running = true;
-  labels.mStatus.textContent = "Bowling…";
-  animate();
-})();
+
 </script>
 </body>
 </html>
